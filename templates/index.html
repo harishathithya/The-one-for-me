@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The One with Me - Your AI Study & Mental Health Buddy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="chat-header">
+            <h1>💬 The One with Me</h1>
+            <p>Your Personal Study & Mental Health Buddy</p>
+        </div>
+        
+        <div class="chat-box" id="chatBox">
+            <div class="message bot-message">
+                <p>Hey there! 👋 I'm "The One with Me" - your personal AI buddy for studies and mental health support.</p>
+                <p>Whether you need help with homework, want to talk about stress, need motivation, or just want to chat - I'm here for you! 💪</p>
+                <p>What's on your mind today? 🎯</p>
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <input 
+                type="text" 
+                id="userInput" 
+                placeholder="Type your message here... (study help, feelings, motivation, anything!)"
+                onkeypress="handleKeyPress(event)"
+            >
+            <button onclick="sendMessage()">Send 📤</button>
+        </div>
+        
+        <button class="clear-btn" onclick="clearChat()">Clear Chat 🔄</button>
+    </div>
+
+    <script>
+        function sendMessage() {
+            const userInput = document.getElementById('userInput');
+            const message = userInput.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to chat
+            addMessage(message, 'user');
+            userInput.value = '';
+            
+            // Send to server
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({message: message})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.response) {
+                    addMessage(data.response, 'bot');
+                } else if (data.error) {
+                    addMessage('Oops! Something went wrong: ' + data.error, 'bot');
+                }
+            })
+            .catch(error => {
+                addMessage('Connection error. Please try again! 😅', 'bot');
+                console.error('Error:', error);
+            });
+        }
+        
+        function addMessage(text, sender) {
+            const chatBox = document.getElementById('chatBox');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.textContent = text;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+        
+        function clearChat() {
+            fetch('/clear', {method: 'POST'})
+            .then(() => {
+                document.getElementById('chatBox').innerHTML = '';
+                const chatBox = document.getElementById('chatBox');
+                const welcomeDiv = document.createElement('div');
+                welcomeDiv.className = 'message bot-message';
+                welcomeDiv.innerHTML = '<p>Hey there! 👋 Chat cleared. What can I help you with today? 🎯</p>';
+                chatBox.appendChild(welcomeDiv);
+            });
+        }
+    </script>
+</body>
+</html>
