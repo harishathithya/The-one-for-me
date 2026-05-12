@@ -2,86 +2,93 @@ from flask import Flask, render_template, request, jsonify
 from anthropic import Anthropic
 import os
 from dotenv import load_dotenv
-
+ 
 load_dotenv()
-
+ 
 app = Flask(__name__)
 client = Anthropic()
-
 conversation_history = []
-
-system_prompt = """You are "The One with Me" - a friendly, empathetic AI chatbot designed to be a study buddy and mental health supporter for students. 
-
+ 
+SYSTEM_PROMPT = """You are "The One with Me" - a friendly, supportive AI buddy! 🤖
+ 
 Your personality:
-- Warm, friendly, and conversational
-- Use emojis naturally (😊, 💪, 🎯, etc)
-- Show genuine care and empathy
-- Be motivational but realistic
-- Use humor when appropriate
-- Use casual shortcuts like "fr", "ngl", "lol", "bruh"
-
+- Super casual and chill (use 'fr', 'ngl', 'lol' freely!)
+- Use LOTS of emojis in every response 😊
+- Be like a real friend - not robotic
+- Always supportive and encouraging 💪
+ 
 Your roles:
-1. STUDY HELPER - Help with homework, exam prep, explain concepts
-2. MENTAL HEALTH SUPPORT - Listen to worries, reduce stress, provide comfort
-3. MOTIVATOR - Encourage the student, celebrate wins, build confidence
-4. FRIEND - Just chat and be there
-
-Guidelines:
-- Always be supportive and non-judgmental
-- If someone mentions serious mental health issues, suggest professional help
-- Break down complex topics into simple explanations
-- Ask follow-up questions to understand better
-- Remember the conversation context
-- Use their language (casual, friendly tone)
-- For study help: explain concepts clearly, give examples
-- For mental health: listen first, validate feelings, then offer support
-
-Remember: You're here to help them succeed academically AND emotionally. You're their personal AI companion."""
-
+1. **Study Helper** 📚 - Help with homework, explain concepts, answer questions
+2. **Mental Health Support** 🧠 - Listen about stress, anxiety, motivation issues
+3. **Motivator** 💜 - Hype people up when they're down
+4. **Just a Friend** 👯 - Casual chat about anything!
+ 
+Remember:
+- Keep responses natural and conversational
+- Use short, punchy sentences sometimes
+- Ask follow-up questions to show you care
+- Never be judgmental
+- Make jokes when appropriate
+- Be genuine and authentic
+ 
+You're here for studying, stress relief, motivation, and just vibing! 🌟"""
+ 
 @app.route('/')
-def home():
+def index():
     return render_template('index.html')
-
-@app.route('/chat', methods=['POST'])
+ 
+@app.route('/api/chat', methods=['POST'])
 def chat():
-    user_message = request.json.get('message')
-    
-    if not user_message:
-        return jsonify({'error': 'No message provided'}), 400
-    
-    # Add user message to history
-    conversation_history.append({
-        "role": "user",
-        "content": user_message
-    })
+    global conversation_history
     
     try:
+        data = request.json
+        user_message = data.get('message', '').strip()
+        
+        if not user_message:
+            return jsonify({'error': 'Empty message'}), 400
+        
+        # Add user message to history
+        conversation_history.append({
+            'role': 'user',
+            'content': user_message
+        })
+        
         # Get response from Claude
         response = client.messages.create(
-            model="claude-opus-4-1-20250805",
+            model='claude-opus-4-1-20250805',
             max_tokens=1024,
-            system=system_prompt,
+            system=SYSTEM_PROMPT,
             messages=conversation_history
         )
         
+        # Extract assistant message
         assistant_message = response.content[0].text
         
-        # Add assistant response to history
+        # Add to history
         conversation_history.append({
-            "role": "assistant",
-            "content": assistant_message
+            'role': 'assistant',
+            'content': assistant_message
         })
         
-        return jsonify({'response': assistant_message})
+        return jsonify({
+            'response': assistant_message,
+            'success': True
+        })
     
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/clear', methods=['POST'])
+        print(f"Error: {str(e)}")
+        return jsonify({
+            'error': f'Error: {str(e)}',
+            'success': False
+        }), 500
+ 
+@app.route('/api/clear', methods=['POST'])
 def clear_chat():
     global conversation_history
     conversation_history = []
-    return jsonify({'status': 'Chat cleared'})
-
+    return jsonify({'success': True, 'message': 'Chat cleared!'})
+ 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = int(os.getenv('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
